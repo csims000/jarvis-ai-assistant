@@ -5,6 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>J.A.R.V.I.S. | Personal Assistant</title>
+<link rel="icon" type="image/svg+xml" href="assets/jarvis-logo.svg">
+<meta name="theme-color" content="#050b14">
 <style>
 :root {
   --bg:#050b14; --panel:#0a182a; --line:#164768;
@@ -37,8 +39,10 @@ button:focus-visible,input:focus-visible {
   justify-content:space-between; gap:12px; padding:10px 20px;
   border-bottom:1px solid var(--line); background:#030a13;
 }
-.brand { font-size:21px; font-weight:800; letter-spacing:3px; color:var(--cyan); }
-.brand small { display:block; font-size:9px; letter-spacing:4px; color:var(--muted); margin-top:4px; }
+.brand { display:flex; align-items:center; min-width:0; }
+.brand-logo { display:block; width:clamp(150px, 22vw, 245px); height:auto; max-height:54px; object-fit:contain; object-position:left center; }
+.hero-logo { z-index:2; display:block; width:min(90%, 520px); height:auto; margin:12px 0 8px; filter:drop-shadow(0 0 10px #087fff55); }
+@media(max-width:620px) { .brand-logo { width:145px; max-height:42px; } .hero-logo { width:95%; } }
 .clock { text-align:right; font-size:16px; }
 .clock small { display:block; color:var(--muted); font-size:11px; margin-top:4px; }
 .layout {
@@ -150,7 +154,7 @@ footer { text-align:center; padding:10px; color:var(--muted); font-size:10px; }
 <body>
 
 <header class="topbar">
-  <div class="brand">J.A.R.V.I.S.<small>PERSONAL ASSISTANT</small></div>
+  <div class="brand"><img class="brand-logo" src="assets/jarvis-logo.svg" alt="JARVIS AI Assistant logo"></div>
   <div class="clock"><span id="clock">--:--:--</span><small id="date">Loading...</small></div>
   <button id="settingsButton" type="button">⚙ Settings</button>
 </header>
@@ -193,7 +197,7 @@ footer { text-align:center; padding:10px; color:var(--muted); font-size:10px; }
   <main class="center" id="homePanel">
     <section class="panel hero" id="hero">
       <div class="orb"></div>
-      <h1>J.A.R.V.I.S.</h1>
+      <img class="hero-logo" src="assets/jarvis-logo.svg" alt="JARVIS AI Assistant">
       <p id="heroStatus">PERSONAL SYSTEM ONLINE</p>
     </section>
 
