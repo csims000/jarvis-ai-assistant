@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="240" viewBox="0 0 900 240" role="img" aria-labelledby="title desc">
+<title id="title">JARVIS AI Assistant</title><desc id="desc">Futuristic chrome-blue JARVIS wordmark with a glowing star and orbital rings.</desc>
+<defs>
+ <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4ffff"/><stop offset=".28" stop-color="#8ceeff"/><stop offset=".58" stop-color="#248cff"/><stop offset="1" stop-color="#d7fbff"/></linearGradient>
+ <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00eaff"/><stop offset="1" stop-color="#236bff"/></linearGradient>
+ <filter id="glow" x="-40%" y="-60%" width="180%" height="220%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g fill="none" stroke="url(#blue)" stroke-width="2" opacity=".8"><path d="M105 110 A345 90 0 0 1 795 110"/><path d="M130 150 A320 80 0 0 0 770 150" opacity=".45"/><path d="M175 30 A275 95 0 0 1 725 30" stroke-dasharray="65 13 28 14"/><path d="M210 202 A240 25 0 0 0 690 202" opacity=".55"/></g>
+<g filter="url(#glow)"><path d="M450 14 L457 39 L482 46 L457 53 L450 78 L443 53 L418 46 L443 39 Z" fill="#a9f8ff"/><circle cx="450" cy="46" r="4" fill="#fff"/></g>
+<ellipse cx="450" cy="121" rx="385" ry="55" transform="rotate(-5 450 121)" fill="none" stroke="#167dff" stroke-width="3" filter="url(#glow)"/>
+<text x="450" y="147" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="105" font-weight="800" letter-spacing="8" fill="url(#metal)" stroke="#087fff" stroke-width="1.2" paint-order="stroke">JARVIS</text>
+<text x="450" y="190" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" letter-spacing="10" fill="#35e6ff">AI ASSISTANT</text>
+<path d="M225 211 H340 M560 211 H675" stroke="#168cff" stroke-width="2"/><circle cx="200" cy="211" r="3" fill="#35e6ff"/><circle cx="700" cy="211" r="3" fill="#35e6ff"/>
+</svg>
