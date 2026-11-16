@@ -18,7 +18,7 @@ export default {
     try {
       const body = await request.json();
 
-      if (["developer_status", "developer_list_files", "developer_read_file"].includes(body.action)) {
+      if (["developer_status", "developer_list_files", "developer_read_file", "developer_read_worker"].includes(body.action)) {
         const supplied = request.headers.get("Authorization") || "";
         const expected = env.VEXARA_ADMIN_KEY || "";
         const suppliedKey = supplied.startsWith("Bearer ") ? supplied.slice(7) : "";
@@ -69,6 +69,21 @@ export default {
           const items = await r.json();
           if (!Array.isArray(items)) return json({ error: "GitHub returned an unexpected file listing." }, 502);
           return json({ files: items.slice(0, 100).map(x => ({ name: x.name, path: x.path, type: x.type, size: x.size || 0 })) });
+        }
+
+        if (body.action === "developer_read_worker") {
+          const r = await fetch(cfBase.replace("/settings", "/content/v2"), { headers: cfHeaders });
+          if (!r.ok) return json({ error: "Could not read Worker source (" + r.status + ")." }, 502);
+          const raw = await r.text();
+          const boundaryLine = raw.slice(0, raw.indexOf("\\r\\n"));
+          const boundary = boundaryLine.startsWith("--") ? boundaryLine.slice(2) : "";
+          const contentStart = raw.indexOf("\\r\\n\\r\\n") + 4;
+          const contentEnd = raw.lastIndexOf("\\r\\n--" + boundary + "--");
+          if (!boundary || contentStart < 4 || contentEnd < contentStart) return json({ error: "Could not parse the Worker source response." }, 502);
+          const part = raw.slice(contentStart, contentEnd);
+          const partStart = part.indexOf("\\r\\n\\r\\n");
+          if (partStart < 0 || !part.slice(0, partStart).includes('name="worker.js"')) return json({ error: "Worker source file was not found." }, 502);
+          return json({ path: "Cloudflare Worker: soft-heart-d641/worker.js", content: part.slice(partStart + 4) });
         }
         if (body.action === "developer_read_file") {
           const path = typeof body.path === "string" ? body.path : "";
