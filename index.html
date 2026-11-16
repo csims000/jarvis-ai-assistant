@@ -287,7 +287,9 @@ async function sendQuestion(question,attachments=[]){
  addMessage("YOU",clean||"Please review the attached file(s).",true,attachments);$("chatInput").value="";$("chatInput").style.height="auto";pendingAttachments=[];renderAttachments();isSending=true;$("sendButton").disabled=true;$("sendButton").textContent="…";
  try{
   const history=collectMessages();const messages=prefs.memory===false?history.slice(-1):history.slice(-20);
+  if(!messages.length||messages[messages.length-1].role!=="user"){messages.push({role:"user",content:userText})}
   const last=messages[messages.length-1];if(last&&last.role==="user"){const parts=[{type:"text",text:userText}];attachments.filter(a=>a.kind==="image").forEach(a=>parts.push({type:"image_url",image_url:{url:a.data}}));attachments.filter(a=>a.kind==="pdf").forEach(a=>parts.push({type:"file",file:{filename:a.name,file_data:a.data}}));last.content=parts}
+  while(messages.length>30)messages.shift();
   const response=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:prefs.model||"openrouter/free",messages,settings:{personality:prefs.personality,length:prefs.length,instructions:prefs.instructions}})});
   let data;try{data=await response.json()}catch{throw new Error("The Worker returned an invalid response.")}
   if(!response.ok)throw new Error(data.error||("Request failed (HTTP "+response.status+")"));
