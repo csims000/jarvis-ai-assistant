@@ -188,7 +188,7 @@ try{prefs={...prefs,...JSON.parse(localStorage.getItem(PREF_KEY)||"{}")};profile
 function applyPrefs(){
  document.documentElement.style.setProperty("--purple",prefs.accent||defaults.accent);
  document.documentElement.style.setProperty("--violet",prefs.accent||defaults.accent);
- document.body.style.backgroundImage=prefs.wallpaper? `linear-gradient(#090611bb,#090611dd),url("${prefs.wallpaper.replace(/["\\\\]/g,"")}")`:"radial-gradient(ellipse at 50% -15%,#28113e 0,transparent 48%),linear-gradient(180deg,#0b0712,#090611 65%)";
+ document.body.style.backgroundImage=prefs.wallpaper? `linear-gradient(#090611bb,#090611dd),url("${prefs.wallpaper.replace(/["\\\\]/g,"")}")`:(document.body.classList.contains("light-theme")?"linear-gradient(180deg,#fbf7ff,#f1e8fa)":"radial-gradient(ellipse at 50% -15%,#28113e 0,transparent 48%),linear-gradient(180deg,#0b0712,#090611 65%)");
  document.body.style.backgroundSize=prefs.wallpaper?"cover":"auto";document.body.style.backgroundAttachment=prefs.wallpaper?"fixed":"scroll";
  document.body.classList.toggle("light-theme",prefs.theme==="light"||(prefs.theme==="auto"&&matchMedia("(prefers-color-scheme: light)").matches));
  voiceEnabled=prefs.voice!==false;
@@ -209,14 +209,17 @@ function addMessage(sender,text,isUser=false){
  if(isUser&&profilePhoto){const img=document.createElement("img");img.src=profilePhoto;img.alt="";avatar.append(img)}else avatar.textContent=isUser?((prefs.name||"You").charAt(0).toUpperCase()):"✦";
  const bubble=document.createElement("div");bubble.className="bubble";
  const who=document.createElement("div");who.className="who";who.textContent=isUser?(prefs.name||"YOU"):"VEXARA";
- const body=document.createElement("div");body.textContent=text;bubble.append(who,body);row.append(avatar,bubble);$("chatlog").append(row);window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+ const body=document.createElement("div");body.textContent=text;bubble.append(who,body);row.append(avatar,bubble);$("chatlog").append(row);if(prefs.saveHistory)saveChatHistory();window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 }
+restoreChatHistory();
 function speak(text){
  if(!voiceEnabled||!("speechSynthesis"in window))return;
  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=Number(prefs.speed)||1;
  const selected=speechSynthesis.getVoices().find(v=>v.name===prefs.voiceName);if(selected)u.voice=selected;
  u.onstart=()=>$("voiceStatus").textContent="Speaking...";u.onend=()=>$("voiceStatus").textContent="Ready";u.onerror=()=>$("voiceStatus").textContent="Voice playback failed.";speechSynthesis.speak(u);
 }
+function saveChatHistory(){try{localStorage.setItem("vexara_chat_history_v1",JSON.stringify(collectMessages()))}catch{$("settingsStatus").textContent="Chat could not be saved. Browser storage may be full."}}
+function restoreChatHistory(){if(!prefs.saveHistory)return;try{const saved=JSON.parse(localStorage.getItem("vexara_chat_history_v1")||"[]");if(Array.isArray(saved))saved.slice(-60).forEach(m=>{if(m&&typeof m.content==="string"&&["user","assistant"].includes(m.role))addMessage(m.role==="user"?"YOU":"VEXARA",m.content,m.role==="user")})}catch{}}
 function collectMessages(){
  return Array.from($("chatlog").querySelectorAll(".message")).map(el=>({role:el.classList.contains("user")?"user":"assistant",content:el.querySelector(".bubble>div:last-child")?.textContent||""})).filter(x=>x.content.trim());
 }
@@ -252,8 +255,8 @@ $("saveSettings").addEventListener("click",()=>{
 $("photoInput").addEventListener("change",e=>{const file=e.target.files?.[0];if(!file)return;if(!file.type.startsWith("image/")||file.size>500000){$("settingsStatus").textContent="Choose an image smaller than 500 KB.";return}const reader=new FileReader();reader.onload=()=>{profilePhoto=reader.result;$("settingsStatus").textContent="Picture ready. Save settings to keep it."};reader.readAsDataURL(file)});
 $("deletePhoto").addEventListener("click",()=>{profilePhoto="";try{localStorage.removeItem("jarvisPhoto");$("settingsStatus").textContent="Profile picture removed."}catch{}});
 $("exportChat").addEventListener("click",()=>{const data=collectMessages();const blob=new Blob([JSON.stringify({app:"VEXARA",exportedAt:new Date().toISOString(),messages:data},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="vexara-chat.json";a.click();URL.revokeObjectURL(url);$("settingsStatus").textContent="Chat export created."});
-$("clearChat").addEventListener("click",()=>{if(!confirm("Clear the messages in this conversation? This cannot be undone."))return;$("chatlog").replaceChildren();$("welcome").classList.remove("hidden");$("settingsStatus").textContent="Current conversation cleared."});
-$("newChat").addEventListener("click",()=>{$("chatlog").replaceChildren();$("welcome").classList.remove("hidden");closeSettings();$("chatInput").focus()});
+$("clearChat").addEventListener("click",()=>{if(!confirm("Clear the messages in this conversation? This cannot be undone."))return;$("chatlog").replaceChildren();$("welcome").classList.remove("hidden");try{localStorage.removeItem("vexara_chat_history_v1")}catch{}$("settingsStatus").textContent="Current conversation cleared."});
+$("newChat").addEventListener("click",()=>{$("chatlog").replaceChildren();$("welcome").classList.remove("hidden");try{localStorage.removeItem("vexara_chat_history_v1")}catch{}closeSettings();$("chatInput").focus()});
 $("resetSettings").addEventListener("click",()=>{if(!confirm("Reset all VEXARA preferences to their defaults?"))return;prefs={...defaults};profilePhoto="";try{localStorage.removeItem(PREF_KEY);localStorage.removeItem("jarvisPhoto");localStorage.removeItem("jarvisUsername");localStorage.removeItem("jarvis_openrouter_model")}catch{}applyPrefs();fillSettings();$("settingsStatus").textContent="Settings reset to defaults."});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings();if(prefs.shortcuts!==false&&e.ctrlKey&&e.key.toLowerCase()==="k"){e.preventDefault();$("chatInput").focus()}});
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
