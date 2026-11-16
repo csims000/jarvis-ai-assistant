@@ -161,7 +161,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
     </div>
     <div class="settings-card">
       <h3>⚙ Advanced</h3>
-      <label for="startPageInput">Starting screen</label><select id="startPageInput"><option value="home">Home / New chat</option><option value="conversation">Conversation</option></select>
+      <label for="startPageInput">Starting screen</label><select id="startPageInput"><option value="home">Home / New chat</option><option value="conversation">Restore last conversation</option></select>
       <label class="toggle"><span>Enable keyboard shortcuts</span><input type="checkbox" id="shortcutsInput" checked></label>
       <button type="button" id="newChat">Start new chat</button>
       <button type="button" id="resetSettings">Reset settings</button>
@@ -212,6 +212,7 @@ function addMessage(sender,text,isUser=false){
  const body=document.createElement("div");body.textContent=text;bubble.append(who,body);row.append(avatar,bubble);$("chatlog").append(row);if(prefs.saveHistory)saveChatHistory();window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 }
 restoreChatHistory();
+function playUiSound(){if(!prefs.sound)return;try{const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;const ctx=new AudioCtx();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=660;gain.gain.setValueAtTime(0.035,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.09);osc.start();osc.stop(ctx.currentTime+0.09);osc.onended=()=>ctx.close()}catch{}}
 function speak(text){
  if(!voiceEnabled||!("speechSynthesis"in window))return;
  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=Number(prefs.speed)||1;
@@ -219,7 +220,7 @@ function speak(text){
  u.onstart=()=>$("voiceStatus").textContent="Speaking...";u.onend=()=>$("voiceStatus").textContent="Ready";u.onerror=()=>$("voiceStatus").textContent="Voice playback failed.";speechSynthesis.speak(u);
 }
 function saveChatHistory(){try{localStorage.setItem("vexara_chat_history_v1",JSON.stringify(collectMessages()))}catch{$("settingsStatus").textContent="Chat could not be saved. Browser storage may be full."}}
-function restoreChatHistory(){if(!prefs.saveHistory)return;try{const saved=JSON.parse(localStorage.getItem("vexara_chat_history_v1")||"[]");if(Array.isArray(saved))saved.slice(-60).forEach(m=>{if(m&&typeof m.content==="string"&&["user","assistant"].includes(m.role))addMessage(m.role==="user"?"YOU":"VEXARA",m.content,m.role==="user")})}catch{}}
+function restoreChatHistory(){if(!prefs.saveHistory||prefs.startPage!=="conversation")return;try{const saved=JSON.parse(localStorage.getItem("vexara_chat_history_v1")||"[]");if(Array.isArray(saved))saved.slice(-60).forEach(m=>{if(m&&typeof m.content==="string"&&["user","assistant"].includes(m.role))addMessage(m.role==="user"?"YOU":"VEXARA",m.content,m.role==="user")})}catch{}}
 function collectMessages(){
  return Array.from($("chatlog").querySelectorAll(".message")).map(el=>({role:el.classList.contains("user")?"user":"assistant",content:el.querySelector(".bubble>div:last-child")?.textContent||""})).filter(x=>x.content.trim());
 }
@@ -232,7 +233,7 @@ async function sendQuestion(question){
   let data;try{data=await response.json()}catch{throw new Error("The Worker returned an invalid response.")}
   if(!response.ok)throw new Error(data.error||("Request failed (HTTP "+response.status+")"));
   if(typeof data.reply!=="string"||!data.reply.trim())throw new Error(data.error||"No reply received. Check the Cloudflare Worker.");
-  lastAnswer=data.reply.trim();addMessage("ASSISTANT",lastAnswer);if(voiceEnabled)speak(lastAnswer);
+  lastAnswer=data.reply.trim();addMessage("ASSISTANT",lastAnswer);playUiSound();if(voiceEnabled)speak(lastAnswer);
  }catch(err){lastAnswer="I couldn't get a response. "+(err?.message||"Unknown connection error")+". Check the Cloudflare Worker, its secret, and the selected model.";addMessage("ASSISTANT",lastAnswer)}
  finally{isSending=false;$("sendButton").disabled=false;$("sendButton").textContent="↑";$("chatInput").focus()}
 }
@@ -250,7 +251,7 @@ function loadVoices(){if(!("speechSynthesis"in window))return;const select=$("vo
 if("speechSynthesis"in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
 $("saveSettings").addEventListener("click",()=>{
  prefs={name:$("nameInput").value.trim().slice(0,30),model:$("modelInput").value.trim()||defaults.model,accent:$("accentInput").value,theme:$("themeInput").value,wallpaper:$("wallpaperInput").value.trim(),personality:$("personalityInput").value,length:$("lengthInput").value,instructions:$("instructionsInput").value.trim(),memory:$("memoryInput").checked,voice:$("voiceEnabledInput").checked,voiceName:$("voiceSelect").value,speed:Number($("speedInput").value),voiceInput:$("voiceInputEnabled").checked,sound:$("soundInput").checked,saveHistory:$("saveHistoryInput").checked,startPage:$("startPageInput").value,shortcuts:$("shortcutsInput").checked};
- try{localStorage.setItem(PREF_KEY,JSON.stringify(prefs));localStorage.setItem("jarvisUsername",prefs.name);localStorage.setItem("jarvis_openrouter_model",prefs.model);if(profilePhoto)localStorage.setItem("jarvisPhoto",profilePhoto);applyPrefs();voiceEnabled=prefs.voice;$("settingsStatus").textContent="All settings saved on this device."}catch{$("settingsStatus").textContent="Could not save. Try a smaller profile picture or remove the wallpaper URL."}
+ try{localStorage.setItem(PREF_KEY,JSON.stringify(prefs));localStorage.setItem("jarvisUsername",prefs.name);localStorage.setItem("jarvis_openrouter_model",prefs.model);if(profilePhoto)localStorage.setItem("jarvisPhoto",profilePhoto);applyPrefs();voiceEnabled=prefs.voice;if(prefs.saveHistory)saveChatHistory();$("settingsStatus").textContent="All settings saved on this device."}catch{$("settingsStatus").textContent="Could not save. Try a smaller profile picture or remove the wallpaper URL."}
 });
 $("photoInput").addEventListener("change",e=>{const file=e.target.files?.[0];if(!file)return;if(!file.type.startsWith("image/")||file.size>500000){$("settingsStatus").textContent="Choose an image smaller than 500 KB.";return}const reader=new FileReader();reader.onload=()=>{profilePhoto=reader.result;$("settingsStatus").textContent="Picture ready. Save settings to keep it."};reader.readAsDataURL(file)});
 $("deletePhoto").addEventListener("click",()=>{profilePhoto="";try{localStorage.removeItem("jarvisPhoto");$("settingsStatus").textContent="Profile picture removed."}catch{}});
