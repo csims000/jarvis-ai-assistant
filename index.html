@@ -91,6 +91,19 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 .settings-footer button{min-width:100px}
 .settings-status{font-size:11px;color:#c4a8e4;margin-top:10px;min-height:16px}
 @media(max-width:620px){.settings-grid{grid-template-columns:1fr}#settingsPanel{inset:3vh 50% auto auto;max-height:94vh;padding:16px}.settings-head{top:-16px}}
+
+.attachment-tray{display:flex;gap:8px;flex-wrap:wrap;padding:4px 5px 9px}
+.attachment-chip{display:flex;align-items:center;gap:7px;max-width:230px;padding:6px 8px;border:1px solid #49305f;border-radius:10px;background:#211332;font-size:11px;color:#e9d5ff}
+.attachment-chip img{width:34px;height:34px;object-fit:cover;border-radius:6px}
+.attachment-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:135px}
+.attachment-chip button{width:23px;height:23px;padding:0;border-radius:7px;font-size:13px}
+#uploadButton,#cameraButton{font-size:17px}
+.attachment-note{font-size:10px;color:#a99bbd;padding:0 7px 5px}
+.message-attachments{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.message-attachments img{width:min(180px,42vw);max-height:150px;object-fit:cover;border-radius:9px;border:1px solid #49305f}
+.message-file{font-size:11px;color:#d9c7ef;border:1px solid #49305f;padding:5px 8px;border-radius:8px}
+.light-theme .attachment-chip{background:#eee1fa;color:#241532}
+
 </style>
 </head>
 <body>
@@ -113,13 +126,19 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 </main>
 <div class="composer-wrap">
   <div class="composer">
+    <div id="attachmentTray" class="attachment-tray hidden" aria-live="polite"></div>
+    <div class="attachment-note">Images, PDFs, and text-based files · up to 4 attachments</div>
     <form id="chatForm">
+      <button type="button" id="uploadButton" class="icon-button" title="Upload files" aria-label="Upload files">＋</button>
+      <button type="button" id="cameraButton" class="icon-button" title="Take a picture" aria-label="Take a picture">📷</button>
       <button type="button" id="listenButton" class="icon-button" title="Use voice input" aria-label="Use voice input">🎙</button>
       <textarea id="chatInput" rows="1" autocomplete="off" placeholder="Message VEXARA..." aria-label="Message your AI"></textarea>
       <button type="button" id="stopSpeech" class="icon-button" title="Stop speaking" aria-label="Stop speaking">■</button>
       <button id="sendButton" type="submit" aria-label="Send message">↑</button>
     </form>
   </div>
+  <input type="file" id="filePicker" hidden multiple accept="image/*,.pdf,.txt,.md,.csv,.json,.html,.xml,.js,.ts,.css,.py,.java,.c,.cpp,.h,.yml,.yaml,.log">
+  <input type="file" id="cameraPicker" hidden accept="image/*" capture="environment">
   <div class="composer-note" id="voiceStatus">Enter to send · Shift + Enter for a new line · Voice features depend on browser support</div>
 </div>
 <div class="settings-overlay" id="settingsOverlay"></div>
@@ -155,7 +174,6 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
       <p class="small-note">Your chats and preferences are stored in this browser only. Export a copy before clearing anything.</p>
       <button type="button" id="exportChat">Export current chat</button>
       <button type="button" id="clearChat">Clear current chat</button><button type="button" id="deletePhoto">Remove profile picture</button>
-      <button type="button" id="deletePhoto">Remove profile picture</button>
       <label class="toggle"><span>Save conversation on this device</span><input type="checkbox" id="saveHistoryInput"></label>
       <p class="small-note">Conversation memory here means context in the current chat; it is not permanent AI memory.</p>
     </div>
@@ -180,7 +198,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 "use strict";
 const $=id=>document.getElementById(id);
 const WORKER_URL="https://soft-heart-d641.caiden-sims.workers.dev/";
-let voiceEnabled=true,lastAnswer="",recognition=null,isListening=false,isSending=false,profilePhoto="";
+let voiceEnabled=true,lastAnswer="",recognition=null,isListening=false,isSending=false,profilePhoto="",pendingAttachments=[];
 const PREF_KEY="vexara_preferences_v2";
 const defaults={name:"",model:"openrouter/free",accent:"#a855f7",theme:"dark",wallpaper:"",personality:"balanced",length:"balanced",instructions:"",memory:true,voice:true,voiceName:"",speed:1,voiceInput:true,sound:true,saveHistory:false,startPage:"home",shortcuts:true};
 let prefs={...defaults};
@@ -202,14 +220,14 @@ function fillSettings(){
 }
 function updateClock(){$("clock").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
 updateClock();setInterval(updateClock,30000);applyPrefs();fillSettings();
-function addMessage(sender,text,isUser=false){
+function addMessage(sender,text,isUser=false,attachments=[]){
  $("welcome").classList.add("hidden");
  const row=document.createElement("article");row.className="message"+(isUser?" user":"");
  const avatar=document.createElement("div");avatar.className="avatar";
  if(isUser&&profilePhoto){const img=document.createElement("img");img.src=profilePhoto;img.alt="";avatar.append(img)}else avatar.textContent=isUser?((prefs.name||"You").charAt(0).toUpperCase()):"✦";
  const bubble=document.createElement("div");bubble.className="bubble";
  const who=document.createElement("div");who.className="who";who.textContent=isUser?(prefs.name||"YOU"):"VEXARA";
- const body=document.createElement("div");body.textContent=text;bubble.append(who,body);row.append(avatar,bubble);$("chatlog").append(row);if(prefs.saveHistory)saveChatHistory();window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+ const body=document.createElement("div");body.textContent=text;bubble.append(who,body);if(attachments.length){const tray=document.createElement("div");tray.className="message-attachments";attachments.forEach(a=>{if(a.kind==="image"){const img=document.createElement("img");img.src=a.data;img.alt=a.name;tray.append(img)}else{const tag=document.createElement("span");tag.className="message-file";tag.textContent="📎 "+a.name;tray.append(tag)}});bubble.append(tray)}row.append(avatar,bubble);$("chatlog").append(row);if(prefs.saveHistory)saveChatHistory();window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 }
 restoreChatHistory();
 function playUiSound(){if(!prefs.sound)return;try{const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;const ctx=new AudioCtx();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.frequency.value=660;gain.gain.setValueAtTime(0.035,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.09);osc.start();osc.stop(ctx.currentTime+0.09);osc.onended=()=>ctx.close()}catch{}}
@@ -224,11 +242,14 @@ function restoreChatHistory(){if(!prefs.saveHistory||prefs.startPage!=="conversa
 function collectMessages(){
  return Array.from($("chatlog").querySelectorAll(".message")).map(el=>({role:el.classList.contains("user")?"user":"assistant",content:el.querySelector(".bubble>div:last-child")?.textContent||""})).filter(x=>x.content.trim());
 }
-async function sendQuestion(question){
- const clean=question.trim();if(!clean||isSending)return;
- addMessage("YOU",clean,true);$("chatInput").value="";$("chatInput").style.height="auto";isSending=true;$("sendButton").disabled=true;$("sendButton").textContent="…";
+async function sendQuestion(question,attachments=[]){
+ const clean=question.trim();if((!clean&&!attachments.length)||isSending)return;
+ const attachedText=attachments.filter(a=>a.kind==="text").map(a=>"\\n\\n[File: "+a.name+"]\\n"+a.data).join("");
+ const userText=(clean||"Please review the attached file(s).")+attachedText;
+ addMessage("YOU",clean||"Please review the attached file(s).",true,attachments);$("chatInput").value="";$("chatInput").style.height="auto";pendingAttachments=[];renderAttachments();isSending=true;$("sendButton").disabled=true;$("sendButton").textContent="…";
  try{
   const history=collectMessages();const messages=prefs.memory===false?history.slice(-1):history.slice(-20);
+  const last=messages[messages.length-1];if(last&&last.role==="user"){const parts=[{type:"text",text:userText}];attachments.filter(a=>a.kind==="image").forEach(a=>parts.push({type:"image_url",image_url:{url:a.data}}));attachments.filter(a=>a.kind==="pdf").forEach(a=>parts.push({type:"file",file:{filename:a.name,file_data:a.data}}));last.content=parts}
   const response=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:prefs.model||"openrouter/free",messages,settings:{personality:prefs.personality,length:prefs.length,instructions:prefs.instructions}})});
   let data;try{data=await response.json()}catch{throw new Error("The Worker returned an invalid response.")}
   if(!response.ok)throw new Error(data.error||("Request failed (HTTP "+response.status+")"));
@@ -237,7 +258,33 @@ async function sendQuestion(question){
  }catch(err){lastAnswer="I couldn't get a response. "+(err?.message||"Unknown connection error")+". Check the Cloudflare Worker, its secret, and the selected model.";addMessage("ASSISTANT",lastAnswer)}
  finally{isSending=false;$("sendButton").disabled=false;$("sendButton").textContent="↑";$("chatInput").focus()}
 }
-$("chatForm").addEventListener("submit",e=>{e.preventDefault();sendQuestion($("chatInput").value)});
+
+function renderAttachments(){
+ const tray=$("attachmentTray");tray.replaceChildren();tray.classList.toggle("hidden",pendingAttachments.length===0);
+ pendingAttachments.forEach((a,i)=>{const chip=document.createElement("div");chip.className="attachment-chip";if(a.kind==="image"){const img=document.createElement("img");img.src=a.data;img.alt="";chip.append(img)}const name=document.createElement("span");name.textContent=a.name;const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.setAttribute("aria-label","Remove "+a.name);remove.addEventListener("click",()=>{pendingAttachments.splice(i,1);renderAttachments()});chip.append(name,remove);tray.append(chip)});
+}
+function readTextFile(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=reject;reader.readAsText(file)})}
+function readDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=reject;reader.readAsDataURL(file)})}
+async function prepareImage(file){
+ const src=await readDataUrl(file);return await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,1600/Math.max(img.width,img.height));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);resolve({name:file.name||"camera-photo.jpg",kind:"image",data:canvas.toDataURL("image/jpeg",.82)})};img.onerror=reject;img.src=src})
+}
+async function addFiles(files){
+ for(const file of Array.from(files||[])){
+  if(pendingAttachments.length>=4){$("voiceStatus").textContent="You can attach up to 4 files per message.";break}
+  try{
+   if(file.type.startsWith("image/")){if(file.size>12*1024*1024)throw new Error("Image is too large (12 MB max).");pendingAttachments.push(await prepareImage(file))}
+   else if(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf")){if(file.size>4*1024*1024)throw new Error("PDFs must be 4 MB or smaller.");pendingAttachments.push({name:file.name,kind:"pdf",data:await readDataUrl(file)})}
+   else if(/\\.(txt|md|csv|json|html|xml|js|ts|css|py|java|c|cpp|h|yml|yaml|log)$/i.test(file.name)){if(file.size>200*1024)throw new Error("Text files must be 200 KB or smaller.");pendingAttachments.push({name:file.name,kind:"text",data:await readTextFile(file)})}
+   else throw new Error("That file type isn't supported yet. Try an image, PDF, or text/code file.");
+  }catch(err){$("voiceStatus").textContent=(file.name||"File")+": "+err.message}
+ }
+ renderAttachments();if(pendingAttachments.length)$("voiceStatus").textContent=pendingAttachments.length+" attachment(s) ready.";
+}
+$("uploadButton").addEventListener("click",()=>$("filePicker").click());
+$("cameraButton").addEventListener("click",()=>$("cameraPicker").click());
+$("filePicker").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+$("cameraPicker").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+$("chatForm").addEventListener("submit",e=>{e.preventDefault();sendQuestion($("chatInput").value,pendingAttachments.slice())});
 $("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("chatForm").requestSubmit()}});
 $("chatInput").addEventListener("input",()=>{$("chatInput").style.height="auto";$("chatInput").style.height=Math.min($("chatInput").scrollHeight,150)+"px"});
 document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("chatInput").value=b.dataset.prompt;$("chatInput").focus()}));
@@ -261,7 +308,7 @@ $("newChat").addEventListener("click",()=>{$("chatlog").replaceChildren();$("wel
 $("resetSettings").addEventListener("click",()=>{if(!confirm("Reset all VEXARA preferences to their defaults?"))return;prefs={...defaults};profilePhoto="";try{localStorage.removeItem(PREF_KEY);localStorage.removeItem("jarvisPhoto");localStorage.removeItem("jarvisUsername");localStorage.removeItem("jarvis_openrouter_model")}catch{}applyPrefs();fillSettings();$("settingsStatus").textContent="Settings reset to defaults."});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings();if(prefs.shortcuts!==false&&e.ctrlKey&&e.key.toLowerCase()==="k"){e.preventDefault();$("chatInput").focus()}});
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(SpeechRecognition){recognition=new SpeechRecognition();recognition.lang="en-US";recognition.continuous=false;recognition.interimResults=false;recognition.onstart=()=>{isListening=true;$("listenButton").textContent="…";$("voiceStatus").textContent="Listening..."};recognition.onresult=e=>{const text=e.results[0][0].transcript;$("chatInput").value=text;sendQuestion(text)};recognition.onerror=e=>$("voiceStatus").textContent="Microphone issue: "+e.error+". You can type instead.";recognition.onend=()=>{isListening=false;$("listenButton").textContent="🎙"};$("listenButton").addEventListener("click",()=>{if(isListening)recognition.stop();else if(prefs.voiceInput!==false)try{recognition.start()}catch{$("voiceStatus").textContent="Could not start microphone. Try again."}})}else{$("listenButton").disabled=true;$("listenButton").title="Voice input is not supported in this browser";$("voiceStatus").textContent="Voice input isn't supported here. You can still type messages."}
+if(SpeechRecognition){recognition=new SpeechRecognition();recognition.lang="en-US";recognition.continuous=false;recognition.interimResults=false;recognition.onstart=()=>{isListening=true;$("listenButton").textContent="…";$("voiceStatus").textContent="Listening..."};recognition.onresult=e=>{const text=e.results[0][0].transcript;$("chatInput").value=text;sendQuestion(text,pendingAttachments.slice())};recognition.onerror=e=>$("voiceStatus").textContent="Microphone issue: "+e.error+". You can type instead.";recognition.onend=()=>{isListening=false;$("listenButton").textContent="🎙"};$("listenButton").addEventListener("click",()=>{if(isListening)recognition.stop();else if(prefs.voiceInput!==false)try{recognition.start()}catch{$("voiceStatus").textContent="Could not start microphone. Try again."}})}else{$("listenButton").disabled=true;$("listenButton").title="Voice input is not supported in this browser";$("voiceStatus").textContent="Voice input isn't supported here. You can still type messages."}
 if(!("speechSynthesis"in window)){$("voiceToggle").disabled=true;$("stopSpeech").disabled=true}
 </script>
 </body>
