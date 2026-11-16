@@ -75,13 +75,13 @@ export default {
           const r = await fetch(cfBase.replace("/settings", "/content/v2"), { headers: cfHeaders });
           if (!r.ok) return json({ error: "Could not read Worker source (" + r.status + ")." }, 502);
           const raw = await r.text();
-          const boundaryLine = raw.slice(0, raw.indexOf("\\r\\n"));
+          const boundaryLine = raw.slice(0, raw.indexOf("\r\n"));
           const boundary = boundaryLine.startsWith("--") ? boundaryLine.slice(2) : "";
-          const contentStart = raw.indexOf("\\r\\n\\r\\n") + 4;
-          const contentEnd = raw.lastIndexOf("\\r\\n--" + boundary + "--");
+          const contentStart = raw.indexOf("\r\n\r\n") + 4;
+          const contentEnd = raw.lastIndexOf("\r\n--" + boundary + "--");
           if (!boundary || contentStart < 4 || contentEnd < contentStart) return json({ error: "Could not parse the Worker source response." }, 502);
           const part = raw.slice(contentStart, contentEnd);
-          const partStart = part.indexOf("\\r\\n\\r\\n");
+          const partStart = part.indexOf("\r\n\r\n");
           if (partStart < 0 || !part.slice(0, partStart).includes('name="worker.js"')) return json({ error: "Worker source file was not found." }, 502);
           return json({ path: "Cloudflare Worker: soft-heart-d641/worker.js", content: part.slice(partStart + 4) });
         }
