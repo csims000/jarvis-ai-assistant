@@ -244,7 +244,7 @@ function collectMessages(){
 }
 async function sendQuestion(question,attachments=[]){
  const clean=question.trim();if((!clean&&!attachments.length)||isSending)return;
- const attachedText=attachments.filter(a=>a.kind==="text").map(a=>"\\n\\n[File: "+a.name+"]\\n"+a.data).join("");
+ const attachedText=attachments.filter(a=>a.kind==="text").map(a=>"\n\n[File: "+a.name+"]\n"+a.data).join("");
  const userText=(clean||"Please review the attached file(s).")+attachedText;
  addMessage("YOU",clean||"Please review the attached file(s).",true,attachments);$("chatInput").value="";$("chatInput").style.height="auto";pendingAttachments=[];renderAttachments();isSending=true;$("sendButton").disabled=true;$("sendButton").textContent="…";
  try{
@@ -274,7 +274,7 @@ async function addFiles(files){
   try{
    if(file.type.startsWith("image/")){if(file.size>12*1024*1024)throw new Error("Image is too large (12 MB max).");pendingAttachments.push(await prepareImage(file))}
    else if(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf")){if(file.size>4*1024*1024)throw new Error("PDFs must be 4 MB or smaller.");pendingAttachments.push({name:file.name,kind:"pdf",data:await readDataUrl(file)})}
-   else if(/\\.(txt|md|csv|json|html|xml|js|ts|css|py|java|c|cpp|h|yml|yaml|log)$/i.test(file.name)){if(file.size>200*1024)throw new Error("Text files must be 200 KB or smaller.");pendingAttachments.push({name:file.name,kind:"text",data:await readTextFile(file)})}
+   else if(/\.(txt|md|csv|json|html|xml|js|ts|css|py|java|c|cpp|h|yml|yaml|log)$/i.test(file.name)){if(file.size>200*1024)throw new Error("Text files must be 200 KB or smaller.");pendingAttachments.push({name:file.name,kind:"text",data:await readTextFile(file)})}
    else throw new Error("That file type isn't supported yet. Try an image, PDF, or text/code file.");
   }catch(err){$("voiceStatus").textContent=(file.name||"File")+": "+err.message}
  }
