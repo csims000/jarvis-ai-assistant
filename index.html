@@ -61,6 +61,16 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 .hidden{display:none!important}
 @media(max-width:600px){.topbar{height:60px;padding:0 14px}.clock{display:none}.layout{padding:12px 14px 140px}.welcome{min-height:54vh}.orb{width:62px;height:62px;margin-bottom:24px}.welcome p{font-size:13px}.bubble{max-width:86%;font-size:13px;padding:11px 13px}.composer-wrap{padding:12px 10px 10px}.composer{border-radius:17px}.top-actions button{padding:8px 10px}}
  
+.light-theme{--bg:#f6f0fc;--surface:#fff;--surface2:#eee5f8;--line:#d7c4e9;--text:#21132e;--muted:#655575;color:var(--text);background:#f6f0fc!important}
+.light-theme .topbar{background:#f8f3fcf0;border-color:#e2d4ed}
+.light-theme .composer{background:#fff;border-color:#c7a9e2}
+.light-theme .bubble{background:#fff;color:#241532;border-color:#dfd0ec}
+.light-theme .message.user .bubble{background:#eee1fa}
+.light-theme .composer-wrap{background:linear-gradient(180deg,transparent,#f6f0fc 24%,#f6f0fc 100%)}
+.light-theme .welcome p,.light-theme .clock{color:#655575}
+.light-theme .settings-card{background:#fff;border-color:#d7c4e9}
+.light-theme #settingsPanel,.light-theme .settings-head,.light-theme .settings-footer{background:#f8f3fc;color:#21132e}
+.light-theme .settings-card input:not([type=checkbox]):not([type=color]),.light-theme .settings-card select,.light-theme .settings-card textarea{background:#fff;color:#21132e}
 .settings-overlay{position:fixed;inset:0;z-index:29;background:#0009;display:none}
 .settings-overlay.open{display:block}
 #settingsPanel{display:none;position:fixed;z-index:30;inset:5vh 50% auto auto;transform:translateX(50%);width:min(760px,calc(100vw - 28px));max-height:90vh;overflow:auto;padding:22px;border:1px solid #7042a1;border-radius:19px;background:#100b19;box-shadow:0 18px 70px #000d}
@@ -144,7 +154,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
       <h3>▣ Privacy & Data</h3>
       <p class="small-note">Your chats and preferences are stored in this browser only. Export a copy before clearing anything.</p>
       <button type="button" id="exportChat">Export current chat</button>
-      <button type="button" id="clearChat">Clear current chat</button>
+      <button type="button" id="clearChat">Clear current chat</button><button type="button" id="deletePhoto">Remove profile picture</button>
       <button type="button" id="deletePhoto">Remove profile picture</button>
       <label class="toggle"><span>Save conversation on this device</span><input type="checkbox" id="saveHistoryInput"></label>
       <p class="small-note">Conversation memory here means context in the current chat; it is not permanent AI memory.</p>
@@ -217,7 +227,7 @@ async function sendQuestion(question){
   const history=collectMessages();const messages=prefs.memory===false?history.slice(-1):history.slice(-20);
   const response=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:prefs.model||"openrouter/free",messages,settings:{personality:prefs.personality,length:prefs.length,instructions:prefs.instructions}})});
   let data;try{data=await response.json()}catch{throw new Error("The Worker returned an invalid response.")}
-  if(!response.ok)throw new Error(data.error||("Request failed (HTTP "+response.status+")");
+  if(!response.ok)throw new Error(data.error||("Request failed (HTTP "+response.status+")"));
   if(typeof data.reply!=="string"||!data.reply.trim())throw new Error(data.error||"No reply received. Check the Cloudflare Worker.");
   lastAnswer=data.reply.trim();addMessage("ASSISTANT",lastAnswer);if(voiceEnabled)speak(lastAnswer);
  }catch(err){lastAnswer="I couldn't get a response. "+(err?.message||"Unknown connection error")+". Check the Cloudflare Worker, its secret, and the selected model.";addMessage("ASSISTANT",lastAnswer)}
