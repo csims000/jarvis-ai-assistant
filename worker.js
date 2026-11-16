@@ -81,9 +81,8 @@ export default {
           const contentEnd = raw.lastIndexOf("\r\n--" + boundary + "--");
           if (!boundary || contentStart < 4 || contentEnd < contentStart) return json({ error: "Could not parse the Worker source response." }, 502);
           const part = raw.slice(contentStart, contentEnd);
-          const partStart = part.indexOf("\r\n\r\n");
-          if (partStart < 0 || !part.slice(0, partStart).includes('name="worker.js"')) return json({ error: "Worker source file was not found." }, 502);
-          return json({ path: "Cloudflare Worker: soft-heart-d641/worker.js", content: part.slice(partStart + 4) });
+          if (!part.includes("export default") || part.length > 300000) return json({ error: "Worker source file was not found or is too large." }, 502);
+          return json({ path: "Cloudflare Worker: soft-heart-d641/worker.js", content: part });
         }
         if (body.action === "developer_read_file") {
           const path = typeof body.path === "string" ? body.path : "";
