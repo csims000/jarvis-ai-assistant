@@ -332,7 +332,8 @@ async function devLoadFiles(){
  }catch(e){devStatus("Could not load files: "+e.message);}
  finally{$("devFiles").disabled=false;}
 }
-async function devReadWorker(){ devStatus("Reading Cloudflare Worker source..."); try{const data=await devRequest("developer_read_worker");$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}catch(e){devStatus("Could not read Worker source: "+e.message);} }\nasync function devReadFile(path,type){
+async function devReadWorker(){ devStatus("Reading Cloudflare Worker source..."); try{const data=await devRequest("developer_read_worker");$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}catch(e){devStatus("Could not read Worker source: "+e.message);} }
+async function devReadFile(path,type){
  if(type!=="file"){devStatus("Folder selected. Folder browsing will be added in a later build.");return;}
  devStatus("Reading "+path+"...");
  try{const data=await devRequest("developer_read_file",{path});$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}
