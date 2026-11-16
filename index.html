@@ -261,7 +261,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
       <div class="dev-key-row"><input id="devAdminKey" type="password" autocomplete="off" placeholder="Enter your VEXARA admin key"><button type="button" id="devConnect">Connect</button></div>
       <div class="dev-status" id="devStatus" aria-live="polite">Not connected.</div>
       <div class="dev-meta" id="devMeta"></div>
-      <div class="dev-toolbar"><button type="button" id="devFiles" disabled>Load repository files</button><button type="button" id="devDisconnect" disabled>Disconnect</button></div>
+      <div class="dev-toolbar"><button type="button" id="devFiles" disabled>Load repository files</button><button type="button" id="devWorker" disabled>View Worker source</button><button type="button" id="devDisconnect" disabled>Disconnect</button></div>
       <div class="dev-columns"><div class="dev-files" id="devFileList">Repository files will appear here.</div><textarea id="devFileContent" readonly spellcheck="false" placeholder="Select a text file to inspect its contents."></textarea></div>
     </div>
     <div class="settings-card">
@@ -307,7 +307,7 @@ async function devRequest(action, extra = {}) {
 }
 function devStatus(message){ $("devStatus").textContent=message; }
 function devDisconnect(){
- devAdminKey="";$("devAdminKey").value="";$("devFiles").disabled=true;$("devDisconnect").disabled=true;
+ devAdminKey="";$("devAdminKey").value="";$("devFiles").disabled=true;$("devWorker").disabled=true;$("devDisconnect").disabled=true;
  $("devMeta").textContent="";$("devFileList").textContent="Repository files will appear here.";$("devFileContent").value="";
  devStatus("Disconnected. The admin key was cleared from page memory.");
 }
@@ -317,7 +317,7 @@ async function devConnect(){
  try{
   const data=await devRequest("developer_status");
   $("devMeta").textContent="GitHub: "+data.repository.name+" · default branch: "+data.repository.default_branch+"\nCloudflare Worker: "+data.worker.name+" · access: "+data.access+"\nWorker updated: "+(data.worker.modified_on||"Not reported")+" · compatibility: "+(data.worker.compatibility_date||"Not reported")+"\nBindings: "+(data.worker.bindings.map(x=>x.name+" ("+x.type+")").join(", ")||"None reported");
-  $("devFiles").disabled=false;$("devDisconnect").disabled=false;devStatus("Connected successfully. Repository and Worker access verified.");
+  $("devFiles").disabled=false;$("devWorker").disabled=false;$("devDisconnect").disabled=false;devStatus("Connected successfully. Repository and Worker access verified.");
  }catch(e){devAdminKey="";$("devAdminKey").value="";devStatus("Connection failed: "+e.message);}
 }
 async function devLoadFiles(){
@@ -332,14 +332,14 @@ async function devLoadFiles(){
  }catch(e){devStatus("Could not load files: "+e.message);}
  finally{$("devFiles").disabled=false;}
 }
-async function devReadFile(path,type){
+async function devReadWorker(){ devStatus("Reading Cloudflare Worker source..."); try{const data=await devRequest("developer_read_worker");$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}catch(e){devStatus("Could not read Worker source: "+e.message);} }\nasync function devReadFile(path,type){
  if(type!=="file"){devStatus("Folder selected. Folder browsing will be added in a later build.");return;}
  devStatus("Reading "+path+"...");
  try{const data=await devRequest("developer_read_file",{path});$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}
  catch(e){devStatus("Could not read file: "+e.message);}
 }
 $("devConnect").addEventListener("click",devConnect);
-$("devFiles").addEventListener("click",devLoadFiles);
+$("devFiles").addEventListener("click",devLoadFiles);$("devWorker").addEventListener("click",devReadWorker);
 $("devDisconnect").addEventListener("click",devDisconnect);
 
 function updateClock(){$("clock").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
