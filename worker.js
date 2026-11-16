@@ -41,7 +41,7 @@ export default {
         };
         const cfHeaders = { "Authorization": "Bearer " + env.CLOUDFLARE_API_TOKEN };
         const ghBase = "https://api.github.com/repos/Csims000/jarvis-ai-assistant";
-        const cfBase = "https://api.cloudflare.com/client/v4/accounts/020edb780d9f2888ba6e727baf229e10/workers/scripts/soft-heart-d641";
+        const cfBase = "https://api.cloudflare.com/client/v4/accounts/020edb780d9f2888ba6e727baf229e10/workers/scripts/soft-heart-d641/settings";
         if (body.action === "developer_status") {
           const [gh, cf] = await Promise.all([
             fetch(ghBase, { headers: githubHeaders }),
@@ -55,8 +55,7 @@ export default {
             connected: true,
             repository: { name: g.full_name, private: !!g.private, default_branch: g.default_branch },
             worker: {
-              name: c.result?.id || "soft-heart-d641",
-              modified_on: c.result?.modified_on || null,
+              name: "soft-heart-d641",
               usage_model: c.result?.usage_model || null,
               compatibility_date: c.result?.compatibility_date || null,
               bindings: Array.isArray(c.result?.bindings) ? c.result.bindings.map(x => ({ name: x.name, type: x.type })) : []
