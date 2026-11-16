@@ -156,6 +156,21 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 .light-theme .website-artifact-title{color:#49305f}
 @media(max-width:600px){.website-preview{height:260px}.website-artifact-head{align-items:flex-start;flex-direction:column}}
 
+
+.developer-card{grid-column:1/-1;border-color:#7042a1;background:linear-gradient(145deg,#1b1029,#120b1c)}
+.developer-card h3{display:flex;align-items:center;gap:8px}
+.dev-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.dev-toolbar button{font-size:11px}
+.dev-key-row{display:flex;gap:8px;align-items:center}
+.dev-key-row input{flex:1;min-width:0}
+.dev-status{font-size:11px;color:#c4a8e4;min-height:18px;margin-top:10px}
+.dev-columns{display:grid;grid-template-columns:minmax(180px,.8fr) minmax(0,1.4fr);gap:12px;margin-top:12px}
+.dev-files{max-height:220px;overflow:auto;border:1px solid #302044;border-radius:9px;padding:6px}
+.dev-files button{display:block;width:100%;text-align:left;margin:2px 0;font-size:11px}
+#devFileContent{min-height:220px;font:11px/1.5 ui-monospace,monospace;white-space:pre;overflow:auto}
+.dev-meta{font-size:11px;color:#bba8ce;line-height:1.7;margin-top:8px}
+@media(max-width:620px){.dev-columns{grid-template-columns:1fr}.dev-key-row{flex-direction:column;align-items:stretch}}
+
 </style>
 </head>
 <body>
@@ -238,6 +253,17 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
       <button type="button" id="resetSettings">Reset settings</button>
       <p class="small-note">Enter sends · Shift + Enter adds a line · Esc closes settings</p>
     </div>
+
+    <div class="settings-card developer-card">
+      <h3>⌘ Developer Mode <span class="small-note">READ-ONLY PREVIEW</span></h3>
+      <p class="small-note">Connect VEXARA to the approved GitHub repository and its existing Cloudflare Worker. The admin key is kept only in this page's memory and is never saved in browser storage. This first build can inspect files and Worker settings; it cannot commit or deploy changes.</p>
+      <label for="devAdminKey">VEXARA admin key</label>
+      <div class="dev-key-row"><input id="devAdminKey" type="password" autocomplete="off" placeholder="Enter your VEXARA admin key"><button type="button" id="devConnect">Connect</button></div>
+      <div class="dev-status" id="devStatus" aria-live="polite">Not connected.</div>
+      <div class="dev-meta" id="devMeta"></div>
+      <div class="dev-toolbar"><button type="button" id="devFiles" disabled>Load repository files</button><button type="button" id="devDisconnect" disabled>Disconnect</button></div>
+      <div class="dev-columns"><div class="dev-files" id="devFileList">Repository files will appear here.</div><textarea id="devFileContent" readonly spellcheck="false" placeholder="Select a text file to inspect its contents."></textarea></div>
+    </div>
     <div class="settings-card">
       <h3>ⓘ About VEXARA</h3>
       <p class="small-note"><strong>VEXARA AI</strong><br>Personal AI workspace<br>Interface version 2.0<br>Powered by your configured AI provider.</p>
@@ -271,6 +297,51 @@ function fillSettings(){
  $("voiceEnabledInput").checked=prefs.voice!==false;$("speedInput").value=prefs.speed||1;$("speedValue").textContent=(prefs.speed||1).toFixed(1)+"×";$("voiceInputEnabled").checked=prefs.voiceInput!==false;$("soundInput").checked=prefs.sound!==false;
  $("saveHistoryInput").checked=!!prefs.saveHistory;$("startPageInput").value=prefs.startPage||"home";$("shortcutsInput").checked=prefs.shortcuts!==false;
 }
+
+let devAdminKey = "";
+async function devRequest(action, extra = {}) {
+ const response = await fetch(WORKER_URL, { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+devAdminKey}, body:JSON.stringify({action,...extra}) });
+ let data; try { data = await response.json(); } catch { throw new Error("Worker returned an invalid response."); }
+ if (!response.ok) throw new Error(data.error || ("Request failed ("+response.status+")."));
+ return data;
+}
+function devStatus(message){ $("devStatus").textContent=message; }
+function devDisconnect(){
+ devAdminKey="";$("devAdminKey").value="";$("devFiles").disabled=true;$("devDisconnect").disabled=true;
+ $("devMeta").textContent="";$("devFileList").textContent="Repository files will appear here.";$("devFileContent").value="";
+ devStatus("Disconnected. The admin key was cleared from page memory.");
+}
+async function devConnect(){
+ const key=$("devAdminKey").value.trim();if(!key){devStatus("Enter the admin key you saved in Cloudflare.");return;}
+ devAdminKey=key;devStatus("Checking GitHub and Cloudflare access...");
+ try{
+  const data=await devRequest("developer_status");
+  $("devMeta").textContent="GitHub: "+data.repository.name+" · default branch: "+data.repository.default_branch+"\nCloudflare Worker: "+data.worker.name+" · access: "+data.access+"\nWorker updated: "+(data.worker.modified_on||"Not reported")+" · compatibility: "+(data.worker.compatibility_date||"Not reported")+"\nBindings: "+(data.worker.bindings.map(x=>x.name+" ("+x.type+")").join(", ")||"None reported");
+  $("devFiles").disabled=false;$("devDisconnect").disabled=false;devStatus("Connected successfully. Repository and Worker access verified.");
+ }catch(e){devAdminKey="";$("devAdminKey").value="";devStatus("Connection failed: "+e.message);}
+}
+async function devLoadFiles(){
+ $("devFiles").disabled=true;devStatus("Loading repository files...");
+ try{
+  const data=await devRequest("developer_list_files");const list=$("devFileList");list.replaceChildren();
+  data.files.forEach(file=>{
+   const b=document.createElement("button");b.type="button";b.textContent=(file.type==="dir"?"📁 ":"📄 ")+file.name;
+   b.addEventListener("click",()=>devReadFile(file.path,file.type));list.append(b);
+  });
+  devStatus("Loaded "+data.files.length+" repository entries from main.");
+ }catch(e){devStatus("Could not load files: "+e.message);}
+ finally{$("devFiles").disabled=false;}
+}
+async function devReadFile(path,type){
+ if(type!=="file"){devStatus("Folder selected. Folder browsing will be added in a later build.");return;}
+ devStatus("Reading "+path+"...");
+ try{const data=await devRequest("developer_read_file",{path});$("devFileContent").value=data.content;devStatus("Read "+data.path+" successfully. Read-only mode.");}
+ catch(e){devStatus("Could not read file: "+e.message);}
+}
+$("devConnect").addEventListener("click",devConnect);
+$("devFiles").addEventListener("click",devLoadFiles);
+$("devDisconnect").addEventListener("click",devDisconnect);
+
 function updateClock(){$("clock").textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
 updateClock();setInterval(updateClock,30000);applyPrefs();fillSettings();
 function attachWebsiteArtifact(bubble,reply){
