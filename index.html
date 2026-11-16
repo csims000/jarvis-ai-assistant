@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Assistant</title>
+<title>VEXARA</title>
 <meta name="theme-color" content="#090611">
 <style>
 :root{color-scheme:dark;--bg:#090611;--surface:#110c1d;--surface2:#181027;--line:#302044;--purple:#a855f7;--violet:#7c3aed;--text:#f5efff;--muted:#a99bbd}
@@ -64,7 +64,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="brand-mark">✦</span><span>AI ASSISTANT</span></div>
+  <div class="brand"><span class="brand-mark">✦</span><span>VEXARA</span></div>
   <div class="top-actions"><span class="clock" id="clock">--:--</span><button id="voiceToggle" class="icon-button" title="Toggle spoken replies" aria-label="Toggle spoken replies">◖))</button><button id="settingsButton" aria-expanded="false">⚙ Settings</button></div>
 </header>
 <main class="layout">
@@ -84,7 +84,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #c084fc;outline-offse
   <div class="composer">
     <form id="chatForm">
       <button type="button" id="listenButton" class="icon-button" title="Use voice input" aria-label="Use voice input">🎙</button>
-      <textarea id="chatInput" rows="1" autocomplete="off" placeholder="Message your AI..." aria-label="Message your AI"></textarea>
+      <textarea id="chatInput" rows="1" autocomplete="off" placeholder="Message VEXARA..." aria-label="Message your AI"></textarea>
       <button type="button" id="stopSpeech" class="icon-button" title="Stop speaking" aria-label="Stop speaking">■</button>
       <button id="sendButton" type="submit" aria-label="Send message">↑</button>
     </form>
@@ -113,7 +113,7 @@ function addMessage(sender,text,isUser=false){
   const avatar=document.createElement("div");avatar.className="avatar";
   if(isUser&&profilePhoto){const img=document.createElement("img");img.src=profilePhoto;img.alt="";avatar.append(img)}else avatar.textContent=isUser?((localStorage.getItem("jarvisUsername")||"Y").charAt(0).toUpperCase()):"✦";
   const bubble=document.createElement("div");bubble.className="bubble";
-  const who=document.createElement("div");who.className="who";who.textContent=isUser?(localStorage.getItem("jarvisUsername")||"YOU"):"ASSISTANT";
+  const who=document.createElement("div");who.className="who";who.textContent=isUser?(localStorage.getItem("jarvisUsername")||"YOU"):"VEXARA";
   const body=document.createElement("div");body.textContent=text;bubble.append(who,body);row.append(avatar,bubble);$("chatlog").append(row);window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 }
 function speak(text){
